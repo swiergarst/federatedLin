@@ -1,0 +1,7 @@
+setup.py
+v6_svm_py/__init__.py
+v6_svm_py.egg-info/PKG-INFO
+v6_svm_py.egg-info/SOURCES.txt
+v6_svm_py.egg-info/dependency_links.txt
+v6_svm_py.egg-info/requires.txt
+v6_svm_py.egg-info/top_level.txt
