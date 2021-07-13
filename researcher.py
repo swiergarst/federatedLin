@@ -14,10 +14,10 @@ import pandas as pd
 from vantage6.tools.util import info
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
+from sklearn.linear_model import SGDClassifier
 from io import BytesIO
 from vantage6.client import Client
-from helper_functions import average, get_datasets, get_config, scaffold, heatmap, get_save_str
+from helper_functions import average, get_datasets, get_full_dataset,get_config, scaffold, heatmap, get_save_str
 start_time = time.time()
 ### connect to server
 
@@ -51,14 +51,16 @@ ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
 #dataset and booleans
 dataset = 'MNIST_2class_IID'
-week = "../datafiles/w11/"
+week = "../datafiles/w12/"
 
 save_file = True
+class_imbalance = True
+sample_imbalance = False
 
 #federated settings
 num_global_rounds = 100
 num_clients = 10
-num_runs = 1
+num_runs = 4
 seed_offset = 0
 num_clients = 10
 lr = 0.5 
@@ -73,13 +75,23 @@ intercepts = np.zeros((num_clients))
 
 # data structures to store results
 accuracies = np.zeros((num_runs, num_clients, num_global_rounds))
+global_accuracies = np.zeros((num_runs, num_global_rounds))
 prevmap = heatmap(num_clients, num_global_rounds)
 newmap = heatmap(num_clients, num_global_rounds)
+
+datasets = get_datasets(dataset)
+X_test, y_test = get_full_dataset(datasets, "FNN")
+X_test = X_test.numpy()
+y_test = y_test.numpy()
 
 ### main loop
 for run in range(num_runs):
     seed = run + seed_offset
-    torch.manual_seed(seed)
+    np.random.seed(seed)
+    model = SGDClassifier(loss="hinge", penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = seed)
+    model.coef_ = np.random.rand(1, 784)
+    model.intercept_ = np.random.rand(1,1)
+    model.classes_ = np.array([0,1])
     #test model for global testing
     for round in range(num_global_rounds):
 
@@ -89,12 +101,11 @@ for run in range(num_runs):
             input_= {
                 'method' : 'train_and_test',
                 'kwargs' : {
-                    'parameters' : parameters,
-                    'seed' : seed
+                    'model' : model,
                     }
             },
             name =  "SVM" + ", round " + str(round),
-            image = "sgarst/federated-learning:fedSVM",
+            image = "sgarst/federated-learning:fedSVM2",
             organization_ids=ids,
             collaboration_id= 1
         )
@@ -117,35 +128,41 @@ for run in range(num_runs):
             result.append(np.load(BytesIO(res[i]["result"]),allow_pickle=True))
         
 
-        results = np.array(result)
-        #print(np.array(results[0,1]))
-        #print(results[:,1])
-        accuracies[run, :, round] = np.array(results[:,0])
-        coefs = np.array(results[:,1])
-        intercepts = np.array(results[:,2])
-        #print(coefs.shape)
-        avg_coef = np.mean(coefs, axis=0)
-        avg_intercept = np.mean(intercepts, axis=0)
+        results = np.array(result, dtype=object)
 
-        parameters = [avg_coef, avg_intercept]
+        global_accuracies[run, round] = model.score(X_test, y_test)
+        accuracies[run, :, round] = results[:,0]
+        
+        
+        for c in range(num_clients):
+            coefs[c,:] = results[c,1]
+            intercepts[c] = results[c,2]
+        #coefs = results[:,1]
+        #intercepts = results[:,2]
+        
+        avg_coef = np.mean(coefs, axis=0, keepdims=True)
+        avg_intercept = np.mean(intercepts, axis=0, keepdims=True)
 
+        model.coef_ = avg_coef
+        model.intercept_ = avg_intercept
+        #print(coefs[0].shape)
         prevmap.save_round(round, coefs, avg_coef, is_dict=False)
         newmap.save_round(round, coefs, avg_coef, is_dict=False)
         # 'global' test
         
-    prevmap.save_map(week + "SVM_IID_" + "prevmap_seed" + str(seed) + ".npy")
-    newmap.save_map(week + "SVM_IID_" + "nc_newmap_seed" + str(seed) + ".npy")
-    if save_file:
-        ### save arrays to files
-        with open (week + "SVM_IID" + "_seed" + str(seed) + ".npy", 'wb') as f:
-            np.save(f, accuracies)
-'''
-        with open (week + "SVM_IID_" + "global_seed"+ str(seed) + ".npy", 'wb') as f2:
-            np.save(f2, complete_test_results)
-'''
 
-print(repr(accuracies))
+    if save_file:   
+        prevmap.save_map(week + "SVM_IID_" + "prevmap_seed" + str(seed) + ".npy")
+        newmap.save_map(week + "SVM_IID_" + "nc_newmap_seed" + str(seed) + ".npy")
+        ### save arrays to files
+        with open (week + "SVM_IID_local" + "_seed" + str(seed) + ".npy", 'wb') as f:
+            np.save(f, accuracies)
+        with open (week + "SVM_IID_global" + "_seed" + str(seed) + ".npy", 'wb') as f:
+            np.save(f, global_accuracies)
+
+#rint(repr(accuracies))
 print(repr(np.mean(accuracies, axis=1)))
+print(repr(global_accuracies))
 #print(np.mean(acc_results, axis=0))
 print("final runtime", (time.time() - start_time)/60)
 x = np.arange(num_global_rounds)
@@ -154,6 +171,7 @@ prevmap.show_map()
 newmap.show_map()
 
 plt.plot(x, np.mean(accuracies, axis=1, keepdims=False)[0,:])
+plt.plot(x, global_accuracies[0,:])
 #plt.plot(x, complete_test_results)
 plt.show()
 
