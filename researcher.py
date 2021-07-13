@@ -50,7 +50,7 @@ lr_global = 5e-1
 ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
 #dataset and booleans
-dataset = 'MNIST_2class_IID'
+dataset = 'MNIST_2class'
 week = "../datafiles/w12/"
 
 save_file = True
@@ -66,12 +66,9 @@ num_clients = 10
 lr = 0.5 
 
 ## parameter structures
-avg_coef = np.zeros((1,784))
-avg_intercept = np.zeros((1))
-parameters = [avg_coef, avg_intercept]
 
-coefs = np.zeros((num_clients, 784))
-intercepts = np.zeros((num_clients))
+
+
 
 # data structures to store results
 accuracies = np.zeros((num_runs, num_clients, num_global_rounds))
@@ -89,9 +86,26 @@ for run in range(num_runs):
     seed = run + seed_offset
     np.random.seed(seed)
     model = SGDClassifier(loss="hinge", penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = seed)
-    model.coef_ = np.random.rand(1, 784)
-    model.intercept_ = np.random.rand(1,1)
-    model.classes_ = np.array([0,1])
+    
+    if dataset == "MNIST_4class":
+        coefs = np.zeros((num_clients, 4, 784))
+        avg_coef = np.zeros((4,784))
+        avg_intercept = np.zeros((4))
+        intercepts = np.zeros((num_clients, 4))
+        model.coef_ = np.random.rand(4, 784)
+        model.intercept_ = np.random.rand(1,1)
+        classes = np.array([0,1,2,3])
+        model.classes_ = classes
+    else:
+        avg_coef = np.zeros((1,784))
+        coefs = np.zeros((num_clients, 784))
+        avg_intercept = np.zeros((1))
+        intercepts = np.zeros((num_clients))
+        model.coef_ = np.random.rand(1, 784)
+        model.intercept_ = np.random.rand(1,1)
+        classes = np.array([0,1])
+        model.classes_ = classes
+    
     #test model for global testing
     for round in range(num_global_rounds):
 
@@ -102,6 +116,7 @@ for run in range(num_runs):
                 'method' : 'train_and_test',
                 'kwargs' : {
                     'model' : model,
+                    'classes' : classes
                     }
             },
             name =  "SVM" + ", round " + str(round),
@@ -133,15 +148,21 @@ for run in range(num_runs):
         global_accuracies[run, round] = model.score(X_test, y_test)
         accuracies[run, :, round] = results[:,0]
         
-        
-        for c in range(num_clients):
-            coefs[c,:] = results[c,1]
-            intercepts[c] = results[c,2]
-        #coefs = results[:,1]
-        #intercepts = results[:,2]
+        if dataset == "MNIST_4class":
+            for c in range(num_clients):
+                coefs[c,:,:] = results[c,1]
+                intercepts[c,:] = results[c,2]
+        else:
+            for c in range(num_clients):
+                coefs[c,:] = results[c,1]
+                intercepts[c] = results[c,2]
         
         avg_coef = np.mean(coefs, axis=0, keepdims=True)
         avg_intercept = np.mean(intercepts, axis=0, keepdims=True)
+        #coefs = results[:,1]
+        #intercepts = results[:,2]
+        
+
 
         model.coef_ = avg_coef
         model.intercept_ = avg_intercept

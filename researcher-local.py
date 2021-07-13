@@ -8,7 +8,7 @@ sys.path.insert(1, os.path.join(sys.path[0], '../..'))
 from helper_functions import get_datasets, get_full_dataset, heatmap
 from sklearn.linear_model import SGDClassifier
 
-dataset = "MNIST_2class_IID"
+dataset = "MNIST_2class"
 ### connect to server
 datasets = get_datasets(dataset)
 #datasets.remove("/home/swier/Documents/afstuderen/nnTest/v6_simpleNN_py/local/MNIST_2Class_IID/MNIST_2Class_IID_client9.csv")
@@ -30,6 +30,9 @@ avg_coef = np.zeros((1,784))
 avg_intercept = np.zeros((1))
 parameters = [avg_coef, avg_intercept]
 num_clients = 10
+seed_offset = 0
+
+
 accuracies = np.zeros((num_runs, num_clients, num_global_rounds))
 global_accuracies = np.zeros((num_runs, num_global_rounds))
 coefs = np.zeros((num_clients, 784))
@@ -43,9 +46,29 @@ X_test = X_test.numpy()
 y_test = y_test.numpy()
 
 for run in range(num_runs):
-    model = SGDClassifier(loss="hinge", penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = 42)
-
-    seed = run
+    seed = run + seed_offset
+    np.random.seed(seed)
+    model = SGDClassifier(loss="hinge", penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = seed)
+    
+    if dataset == "MNIST_4class":
+        coefs = np.zeros((num_clients, 4, 784))
+        avg_coef = np.zeros((4,784))
+        avg_intercept = np.zeros((4))
+        intercepts = np.zeros((num_clients, 4))
+        model.coef_ = np.random.rand(4, 784)
+        model.intercept_ = np.random.rand(1,1)
+        classes = np.array([0,1,2,3])
+        model.classes_ = classes
+    else:
+        avg_coef = np.zeros((1,784))
+        coefs = np.zeros((num_clients, 784))
+        avg_intercept = np.zeros((1))
+        intercepts = np.zeros((num_clients))
+        model.coef_ = np.random.rand(1, 784)
+        model.intercept_ = np.random.rand(1,1)
+        classes = np.array([0,1])
+        model.classes_ = classes
+    
     map = heatmap(num_clients, num_global_rounds )
     for round in range(num_global_rounds):
         round_task = client.create_new_task(
@@ -53,6 +76,7 @@ for run in range(num_runs):
                 'method' : 'train_and_test',
                 'kwargs' : {
                     'model' : model,
+                    'classes': classes
                     }
             },
             organization_ids=org_ids
@@ -71,7 +95,6 @@ for run in range(num_runs):
         #print(intercepts)
         #sys.exit()
         coef_log_l[run,round,:] = coefs[:, 345]
-        #avg_coef, _ = scaffold(avg_coef, coefs, None, None, None, 0.5, use_c=False)
         intercept_agg = 0
         coef_agg = np.zeros((784))
         #for i in range(num_clients):

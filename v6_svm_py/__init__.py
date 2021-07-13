@@ -15,7 +15,7 @@ import numpy as np
 def master():
     pass
 
-def RPC_train_and_test(data, model):
+def RPC_train_and_test(data, model, classes):
 
     dim_num = 784
     dims = ['pixel' + str(i) for i in range(dim_num)]
@@ -24,7 +24,7 @@ def RPC_train_and_test(data, model):
     X_test_arr = data.loc[data['test/train'] == 'test'][dims].values
     y_test_arr = data.loc[data['test/train'] == 'test']['label'].values
 
-    model.partial_fit(X_train_arr, y_train_arr, classes=[0,1])
+    model.partial_fit(X_train_arr, y_train_arr, classes=classes)
 
     result = model.score(X_test_arr, y_test_arr)
 
