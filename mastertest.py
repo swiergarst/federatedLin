@@ -24,7 +24,7 @@ task = client.post_task(
         }
     },
     name = "mastertest",
-    image = "sgarst/federated-learning:mastertest",
+    image = "sgarst/federated-learning:mastertest2",
     organization_ids=ids,
     collaboration_id=1
 )
