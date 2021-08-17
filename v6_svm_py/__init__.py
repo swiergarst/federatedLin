@@ -13,7 +13,7 @@ from vantage6.client import Client
 
 
 def master(client, data, id_array, input_array):
-    own_id = client.organization["id"]
+    own_id = client.host_node_id
     index = np.where(id_array == own_id)
     return input_array[index] * 2
 
