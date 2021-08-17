@@ -41,8 +41,6 @@ client.setup_encryption(privkey)
 
 #torch
 
-criterion = nn.CrossEntropyLoss()
-optimizer = 'SGD'
 lr_local = 5e-1
 lr_global = 5e-1
 
@@ -50,12 +48,17 @@ lr_global = 5e-1
 ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
 #dataset and booleans
-dataset = 'MNIST_2class'
-week = "../datafiles/w12/"
+dataset = 'MNIST_2class' #either MNIST_2class or MNIST_4class
+week = "../datafiles/w14/"
+classifier = "SVM" #either SVM or LR
 
 save_file = True
-class_imbalance = True
+class_imbalance = False
 sample_imbalance = False
+use_scaffold = False
+use_sizes = False
+
+save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1)
 
 #federated settings
 num_global_rounds = 100
@@ -63,11 +66,13 @@ num_clients = 10
 num_runs = 4
 seed_offset = 0
 num_clients = 10
-lr = 0.5 
 
-## parameter structures
-
-
+if classifier == "SVM":
+    loss = "hinge"
+elif classifier == "LR":
+    loss = "log"
+else:
+    raise(Exception("unkown classifier provided"))
 
 
 # data structures to store results
@@ -85,7 +90,7 @@ y_test = y_test.numpy()
 for run in range(num_runs):
     seed = run + seed_offset
     np.random.seed(seed)
-    model = SGDClassifier(loss="hinge", penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = seed)
+    model = SGDClassifier(loss=loss, penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = seed, learning_rate='constant', eta0=lr_local)
     
     if dataset == "MNIST_4class":
         coefs = np.zeros((num_clients, 4, 784))
@@ -93,7 +98,7 @@ for run in range(num_runs):
         avg_intercept = np.zeros((4))
         intercepts = np.zeros((num_clients, 4))
         model.coef_ = np.random.rand(4, 784)
-        model.intercept_ = np.random.rand(1,1)
+        model.intercept_ = np.random.rand(4)
         classes = np.array([0,1,2,3])
         model.classes_ = classes
     else:
@@ -105,8 +110,9 @@ for run in range(num_runs):
         model.intercept_ = np.random.rand(1,1)
         classes = np.array([0,1])
         model.classes_ = classes
-    
-    #test model for global testing
+    c = [np.zeros_like(model.coef_), np.zeros_like(model.intercept_)]
+    ci = np.array([np.zeros_like(model.coef_), np.zeros_like(model.intercept_)] * num_clients) 
+
     for round in range(num_global_rounds):
 
         print("starting round", round)
@@ -116,11 +122,14 @@ for run in range(num_runs):
                 'method' : 'train_and_test',
                 'kwargs' : {
                     'model' : model,
-                    'classes' : classes
+                    'classes' : classes,
+                    'use_scaffold': use_scaffold,
+                    'c' : c,
+                    'ci' : ci
                     }
             },
             name =  "SVM" + ", round " + str(round),
-            image = "sgarst/federated-learning:fedSVM2",
+            image = "sgarst/federated-learning:fedSVM3",
             organization_ids=ids,
             collaboration_id= 1
         )
@@ -145,9 +154,11 @@ for run in range(num_runs):
 
         results = np.array(result, dtype=object)
 
-        global_accuracies[run, round] = model.score(X_test, y_test)
+
         accuracies[run, :, round] = results[:,0]
         
+        #print(results[0,1])
+
         if dataset == "MNIST_4class":
             for c in range(num_clients):
                 coefs[c,:,:] = results[c,1]
@@ -157,8 +168,14 @@ for run in range(num_runs):
                 coefs[c,:] = results[c,1]
                 intercepts[c] = results[c,2]
         
-        avg_coef = np.mean(coefs, axis=0, keepdims=True)
-        avg_intercept = np.mean(intercepts, axis=0, keepdims=True)
+
+        if use_scaffold:
+            avg_coef = scaffold(coefs, axis=0, keepdims=False)
+            avg_intercept = scaffold(intercepts, axis=0, keepdims=False)
+        else:
+            avg_coef = average()
+            avg_intercept = average()
+        #sys.exit()
         #coefs = results[:,1]
         #intercepts = results[:,2]
         
@@ -166,6 +183,7 @@ for run in range(num_runs):
 
         model.coef_ = avg_coef
         model.intercept_ = avg_intercept
+        global_accuracies[run, round] = model.score(X_test, y_test)
         #print(coefs[0].shape)
         prevmap.save_round(round, coefs, avg_coef, is_dict=False)
         newmap.save_round(round, coefs, avg_coef, is_dict=False)
@@ -173,12 +191,12 @@ for run in range(num_runs):
         
 
     if save_file:   
-        prevmap.save_map(week + "SVM_IID_" + "prevmap_seed" + str(seed) + ".npy")
-        newmap.save_map(week + "SVM_IID_" + "nc_newmap_seed" + str(seed) + ".npy")
+        prevmap.save_map(week+ save_str + "prevmap_seed" + str(seed) + ".npy")
+        newmap.save_map(week + save_str + "nc_newmap_seed" + str(seed) + ".npy")
         ### save arrays to files
-        with open (week + "SVM_IID_local" + "_seed" + str(seed) + ".npy", 'wb') as f:
+        with open (week + save_str + "_local_seed" + str(seed) + ".npy", 'wb') as f:
             np.save(f, accuracies)
-        with open (week + "SVM_IID_global" + "_seed" + str(seed) + ".npy", 'wb') as f:
+        with open (week + save_str + "_global_seed" + str(seed) + ".npy", 'wb') as f:
             np.save(f, global_accuracies)
 
 #rint(repr(accuracies))

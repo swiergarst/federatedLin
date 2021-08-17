@@ -8,7 +8,7 @@ sys.path.insert(1, os.path.join(sys.path[0], '../..'))
 from helper_functions import get_datasets, get_full_dataset, heatmap
 from sklearn.linear_model import SGDClassifier
 
-dataset = "MNIST_2class"
+dataset = "MNIST_4class"
 ### connect to server
 datasets = get_datasets(dataset)
 #datasets.remove("/home/swier/Documents/afstuderen/nnTest/v6_simpleNN_py/local/MNIST_2Class_IID/MNIST_2Class_IID_client9.csv")
@@ -56,7 +56,7 @@ for run in range(num_runs):
         avg_intercept = np.zeros((4))
         intercepts = np.zeros((num_clients, 4))
         model.coef_ = np.random.rand(4, 784)
-        model.intercept_ = np.random.rand(1,1)
+        model.intercept_ = np.random.rand(4)
         classes = np.array([0,1,2,3])
         model.classes_ = classes
     else:
