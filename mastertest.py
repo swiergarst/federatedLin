@@ -24,7 +24,7 @@ task = client.post_task(
         }
     },
     name = "mastertest",
-    image = "sgarst/federated-learning:mastertest2",
+    image = "sgarst/federated-learning:mastertest4",
     organization_ids=ids,
     collaboration_id=1
 )
@@ -45,3 +45,6 @@ for i in range(num_clients):
     result.append(np.load(BytesIO(res[i]["result"]),allow_pickle=True))
 
 print(result)
+
+
+print(ids)

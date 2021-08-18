@@ -15,7 +15,8 @@ from vantage6.client import Client
 def master(client, data, id_array, input_array):
     own_id = client.host_node_id
     index = np.where(id_array == own_id)
-    return input_array[index[0]] * 2
+    id = client.request(f'node/{own_id}/organization')
+    return id
 
     
 
