@@ -110,79 +110,73 @@ for run in range(num_runs):
         model.intercept_ = np.random.rand(1,1)
         classes = np.array([0,1])
         model.classes_ = classes
-    c = [np.zeros_like(model.coef_), np.zeros_like(model.intercept_)]
-    ci = np.array([np.zeros_like(model.coef_), np.zeros_like(model.intercept_)] * num_clients) 
+    c = {
+        "coef" : np.zeros_like(model.coef_),
+        "inter" : np.zeros_like(model.intercept_)
+    }
+    ci = np.array([c.copy()] * num_clients)
 
     for round in range(num_global_rounds):
-
+        old_ci = np.copy(ci)
+        task_list = np.empty(num_clients, dtype=object)
+        
         print("starting round", round)
         ### request task from clients
-        round_task = client.post_task(
-            input_= {
-                'method' : 'train_and_test',
-                'kwargs' : {
-                    'model' : model,
-                    'classes' : classes,
-                    'use_scaffold': use_scaffold,
-                    'c' : c,
-                    'ci' : ci
-                    }
-            },
-            name =  "SVM" + ", round " + str(round),
-            image = "sgarst/federated-learning:fedSVM3",
-            organization_ids=ids,
-            collaboration_id= 1
-        )
+        for i, org_id in enumerate (ids):
+            round_task = client.post_task(
+                input_= {
+                    'method' : 'train_and_test',
+                    'kwargs' : {
+                        'model' : model,
+                        'classes' : classes,
+                        'use_scaffold': use_scaffold,
+                        'c' : c,
+                        'ci' : ci[i]
+                        }
+                },
+                name =  "SVM" + ", round " + str(round),
+                image = "sgarst/federated-learning:fedSVM3",
+                organization_ids=[org_id],
+                collaboration_id= 1
+            )
+            task_list[i] =  round_task
         
-        #print(round_task)
-        info("Waiting for results")
-        res = client.get_results(task_id=round_task.get("id"))
-        attempts=1
-        #print(res)
-        while(None in [res[i]["result"] for i in range(num_clients)]  and attempts < 20):
-            print("waiting...")
-            time.sleep(1)
-            res = client.get_results(task_id=round_task.get("id"))
-            attempts += 1
-
-        info("Obtaining results")
-        #result  = client.get_results(task_id=task.get("id"))
-        result = []
-        for i in range(num_clients):
-            result.append(np.load(BytesIO(res[i]["result"]),allow_pickle=True))
+        finished = False
+        dataset_sizes = np.empty(num_clients, dtype = object)
+        solved_tasks = []
+        while (finished == False):
+            for task_i, task in enumerate(task_list):
+                result = client.get_results(task_id = task.get("id"))
+                if not (None in [result[0]["result"]]):
+                #print(result[0,0])
+                    if not (task_i in solved_tasks):
+                        #print(result)
+                        res = (np.load(BytesIO(result[0]["result"]),allow_pickle=True))
+                        accuracies[run, task_i, round] = res[0]
+                        coefs[task_i,: ,:] = res[1]
+                        intercepts[task_i,:] = res[2]
+                        ci[task_i] = res[3]
+                        dataset_sizes[task_i] = res[4]
+                        solved_tasks.append(task_i)
+            if len(solved_tasks) == num_clients:
+                finished = True
+            print("waiting")
+            time.sleep(1)   
         
-
-        results = np.array(result, dtype=object)
-
-
-        accuracies[run, :, round] = results[:,0]
-        
-        #print(results[0,1])
-
-        if dataset == "MNIST_4class":
-            for c in range(num_clients):
-                coefs[c,:,:] = results[c,1]
-                intercepts[c,:] = results[c,2]
-        else:
-            for c in range(num_clients):
-                coefs[c,:] = results[c,1]
-                intercepts[c] = results[c,2]
         
 
         if use_scaffold:
-            avg_coef = scaffold(coefs, axis=0, keepdims=False)
-            avg_intercept = scaffold(intercepts, axis=0, keepdims=False)
+            avg_coef, c = scaffold(dataset, None, model.coef_, coefs, c, old_ci, ci, lr_global, key = "coef")
+            avg_intercept, c = scaffold(dataset, None, model.intercept_, intercepts, c, old_ci, ci, lr_global,key = "inter")
         else:
-            avg_coef = average()
-            avg_intercept = average()
-        #sys.exit()
-        #coefs = results[:,1]
-        #intercepts = results[:,2]
+            avg_coef = average(coefs, dataset_sizes, None, dataset, None, use_sizes, False)
+            avg_intercept = average(intercepts, dataset_sizes, None, dataset, None, use_sizes, False)
+
         
 
 
-        model.coef_ = avg_coef
-        model.intercept_ = avg_intercept
+        model.coef_ = np.copy(avg_coef)
+        model.intercept_ = np.copy(avg_intercept)
         global_accuracies[run, round] = model.score(X_test, y_test)
         #print(coefs[0].shape)
         prevmap.save_round(round, coefs, avg_coef, is_dict=False)
