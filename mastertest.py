@@ -2,6 +2,7 @@ from vantage6.client import Client
 import numpy as np
 import time
 from io import BytesIO
+import sys
 
 print("Attempt login to Vantage6 API")
 client = Client("http://localhost", 5000, "/api")
@@ -14,6 +15,7 @@ in_array = np.array([30,31,32,33,34,35,36,37,38,39])
 
 ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
+
 task = client.post_task(
     input_ = {
         'master': 1,
@@ -24,7 +26,7 @@ task = client.post_task(
         }
     },
     name = "mastertest",
-    image = "sgarst/federated-learning:mastertest4",
+    image = "sgarst/federated-learning:mastertest5",
     organization_ids=ids,
     collaboration_id=1
 )
