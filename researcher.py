@@ -41,29 +41,29 @@ client.setup_encryption(privkey)
 
 #torch
 
-lr_local = 5e-4 # 5e-3 for LR, 5e-6 for SVM
+lr_local = 5e-2 # 5e-3 for LR, 5e-6 for SVM
 lr_global = 5e-1
 
 
 ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
 #dataset and booleans
-dataset = 'MNIST_4class' #either MNIST_2class or MNIST_4class
+dataset = 'MNIST_2class' #either MNIST_2class or MNIST_4class
 week = "../datafiles/w15/"
-classifier = "LR" #either SVM or LR
+classifier = "SVM" #either SVM or LR
 
-save_file = True
-class_imbalance = False
-sample_imbalance = True
-use_scaffold = False
-use_sizes = True
+save_file = False
+class_imbalance = True
+sample_imbalance = False
+use_scaffold = True
+use_sizes = False
 
 save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1)
 
 #federated settings
-num_global_rounds = 100
+num_global_rounds = 20
 num_clients = 10
-num_runs = 2
+num_runs = 1
 seed_offset = 0
 num_clients = 10
 
@@ -144,7 +144,7 @@ for run in range(num_runs):
                         }
                 },
                 name =  "SVM" + ", round " + str(round),
-                image = "sgarst/federated-learning:fedSVM4",
+                image = "sgarst/federated-learning:fedSVM5",
                 organization_ids=[org_id],
                 collaboration_id= 1
             )
