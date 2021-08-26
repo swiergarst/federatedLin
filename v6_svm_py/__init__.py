@@ -36,8 +36,8 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci):
     model.partial_fit(X_train_arr, y_train_arr, classes=classes)
 
     if use_scaffold:
-        model.coef_ = model.coef_ + c["coef"] - ci["coef"]
-        model.intercept_ = model.intercept_ + c["inter"] - ci["inter"]
+        model.coef_ += + c["coef"] - ci["coef"]
+        model.intercept_ += + c["inter"] - ci["inter"]
         ci["coef"] = ci["coef"] - c["coef"] + (1/model.get_params()['eta0']) * (old_coef - model.coef_)
         ci["inter"] = ci["inter"] - c["inter"] + (1/model.get_params()['eta0']) * (old_inter - model.intercept_)
 
