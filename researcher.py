@@ -41,29 +41,29 @@ client.setup_encryption(privkey)
 
 #torch
 
-lr_local = 5e-4 # 5e-3 for LR, 5e-6 for SVM
+lr_local = 5e-5 # 5e-3 for LR, 5e-6 for SVM
 lr_global = 5e-1
 
 
 ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
 #dataset and booleans
-dataset = 'MNIST_2class' #either MNIST_2class or MNIST_4class
+dataset = 'MNIST_4class' #either MNIST_2class or MNIST_4class
 week = "../datafiles/w15/"
-classifier = "LR" #either SVM or LR
+classifier = "SVM" #either SVM or LR
 
-save_file = False
-class_imbalance = True
-sample_imbalance = False
-use_scaffold = True
-use_sizes = True
+save_file = True
+class_imbalance = False
+sample_imbalance = True
+use_scaffold = False
+use_sizes = False
 
 save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1)
 
 #federated settings
-num_global_rounds = 20
+num_global_rounds = 100
 num_clients = 10
-num_runs = 1
+num_runs = 4
 seed_offset = 0
 num_clients = 10
 
@@ -111,7 +111,7 @@ for run in range(num_runs):
         avg_intercept = np.zeros((1))
         intercepts = np.zeros((num_clients, 1))
         model.coef_ = np.random.rand(1, 784)
-        model.intercept_ = np.random.rand(1,1)
+        model.intercept_ = np.random.rand(1)
         classes = np.array([0,1])
         model.classes_ = classes
     c = {

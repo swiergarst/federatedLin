@@ -12,7 +12,7 @@ dataset = "MNIST_2class"
 
 
 save_file  = False
-class_imbalance = False
+class_imbalance = True
 sample_imbalance = False
 use_scaffold = True
 use_sizes = False
@@ -30,11 +30,13 @@ org_ids = [organization["id"] for organization in organizations]
 
 
 
-lr_local = 0.5
-lr_global = 0.5
+lr_local = 5e-4
+lr_global = 1
+
 
 num_runs = 1
-num_global_rounds = 5
+num_global_rounds = 20
+
 num_clients = 10
 seed_offset = 0
 
@@ -74,7 +76,7 @@ for run in range(num_runs):
         avg_intercept = np.zeros((1))
         intercepts = np.zeros((num_clients,1))
         model.coef_ = np.random.rand(1, 784)
-        model.intercept_ = np.random.rand(1,1)
+        model.intercept_ = np.random.rand(1)
         classes = np.array([0,1])
         model.classes_ = classes
     
@@ -83,9 +85,16 @@ for run in range(num_runs):
         "inter" : np.zeros_like(model.intercept_)
     }
     ci = np.array([c.copy()] * num_clients)
+    old_ci = np.array([c.copy()] * num_clients)
+    c_log = np.zeros((num_global_rounds))
+    ci_log = np.zeros((num_global_rounds, num_clients))
+    c_ind_log = np.zeros((num_global_rounds))
+    ci_ind_log = np.zeros((num_global_rounds, num_clients))
+
     map = heatmap(num_clients, num_global_rounds )
     for round in range(num_global_rounds):
-        old_ci = np.copy(ci)
+        for i in range(num_clients):
+            old_ci[i] = ci[i].copy()
         task_list = np.empty(num_clients, dtype=object)
         
         for i, org_id in enumerate (org_ids):
@@ -140,6 +149,11 @@ for run in range(num_runs):
         if use_scaffold:
             avg_coef, c = scaffold(dataset, None, model.coef_, coefs, c, old_ci, ci, lr_global, key = "coef")
             avg_intercept, c = scaffold(dataset, None, model.intercept_, intercepts, c, old_ci, ci, lr_global,key = "inter")
+            c_log[round] = c['coef'][0,375]
+            c_ind_log[round] = np.argmax(c['coef'])
+            for i in range(num_clients):
+                ci_log[round, i] = ci[i]['coef'][0,375]
+                ci_ind_log[round,i] = np.argmax(ci[i]['coef'])
         else:
             avg_coef = average(coefs, dataset_sizes, None, dataset, None, use_sizes, False)
             avg_intercept = average(intercepts, dataset_sizes, None, dataset, None, use_sizes, False)
@@ -176,5 +190,14 @@ plt.plot(np.arange(num_global_rounds), np.mean(accuracies, axis = 1)[0,:])
 
 plt.plot(np.arange(num_global_rounds), global_accuracies[0,:])
 plt.show()
+
+#print(c_ind_log)
+#print(ci_ind_log)
+
+plt.plot(x, c_log)
+plt.plot(x, ci_log)
+#plt.show()
+
+
 #map.show_map("SVM classifier, IID datasets")
 #map.save_map("../w10/simulated_svm_average_seed" + str(seed) + "map.npy")
