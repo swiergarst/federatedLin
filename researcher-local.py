@@ -93,6 +93,7 @@ for run in range(num_runs):
 
     map = heatmap(num_clients, num_global_rounds )
     for round in range(num_global_rounds):
+        
         for i in range(num_clients):
             old_ci[i] = ci[i].copy()
         task_list = np.empty(num_clients, dtype=object)

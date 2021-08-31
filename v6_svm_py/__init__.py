@@ -22,11 +22,10 @@ def master(client, data, id_array, input_array):
 
 def RPC_train_and_test(data, model, classes, use_scaffold, c, ci):
 
-    dim_num = 784
-    dims = ['pixel' + str(i) for i in range(dim_num)]
-    X_train_arr = data.loc[data['test/train'] == 'train'][dims].values
+
+    X_train_arr = data.loc[data['test/train'] == 'train'].drop(columns = ['test/train', 'label']).values
     y_train_arr = data.loc[data['test/train'] == 'train']['label'].values
-    X_test_arr = data.loc[data['test/train'] == 'test'][dims].values
+    X_test_arr = data.loc[data['test/train'] == 'test'].drop(columns = ["test/train", "label"]).values
     y_test_arr = data.loc[data['test/train'] == 'test']['label'].values
 
     old_coef = np.copy(model.coef_)
@@ -36,17 +35,11 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci):
     model.partial_fit(X_train_arr, y_train_arr, classes=classes)
 
     if use_scaffold:
-        c_copy = np.copy(c["coef"])
-        ci_copy = np.copy(ci["coef"])
-        c_copy2 = np.copy(c["inter"])
-        ci_copy2 = np.copy(ci["inter"])
+
         m_copy = np.copy(model.coef_)
         m_copy2 = np.copy(model.intercept_)
         lr = model.get_params()['eta0']
 
-
-        bla = np.copy(c["coef"] - ci["coef"])
-        bla2 = np.copy(c["inter"] - ci["inter"])
         model.coef_ = model.coef_ + lr * (c["coef"] - ci["coef"]) 
         model.intercept_ = model.intercept_ + lr * (c["inter"] - ci["inter"])
         #print(model.coef_.shape)
