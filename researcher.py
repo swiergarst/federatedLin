@@ -17,7 +17,9 @@ sys.path.insert(1, os.path.join(sys.path[0], '..'))
 from sklearn.linear_model import SGDClassifier
 from io import BytesIO
 from vantage6.client import Client
-from helper_functions import average, get_datasets, clear_database, get_full_dataset,get_config, scaffold, heatmap, get_save_str
+from helper_functions import heatmap
+from comp_functions import average, scaffold
+from config_functions import get_full_dataset, get_datasets, clear_database, get_save_str
 start_time = time.time()
 ### connect to server
 
@@ -41,7 +43,7 @@ client.setup_encryption(privkey)
 
 #torch
 
-lr_local = 5e-3 # 5e-3 for LR, 5e-5 for SVM (5e-4 for scaffold svm)
+lr_local = 5e-5 # 5e-3 for LR, 5e-5 for SVM (5e-4 for scaffold svm)
 lr_global = 1
 
 
@@ -49,10 +51,10 @@ ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
 #dataset and booleans
 dataset = 'MNIST_2class' #either MNIST_2class or MNIST_4class
-week = "../datafiles/w16/"
+week = "../datafiles/w17/"
 classifier = "LR" #either SVM or LR
 
-save_file = True
+save_file = False
 class_imbalance = True
 sample_imbalance = False
 use_scaffold = True
@@ -63,8 +65,8 @@ save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, 
 #federated settings
 num_global_rounds = 100
 num_clients = 10
-num_runs = 3
-seed_offset = 1
+num_runs = 1
+seed_offset = 0
 num_clients = 10
 
 if classifier == "SVM":
@@ -104,6 +106,24 @@ for run in range(num_runs):
         model.coef_ = np.random.rand(4, 784)
         model.intercept_ = np.random.rand(4)
         classes = np.array([0,1,2,3])
+        model.classes_ = classes
+    elif dataset == "fashion_MNIST":
+        coefs = np.zeros((num_clients, 10, 784))
+        avg_coef = np.zeros((10,784))
+        avg_intercept = np.zeros((10))
+        intercepts = np.zeros((num_clients, 10))
+        model.coef_ = np.random.rand(10, 784)
+        model.intercept_ = np.random.rand(10)
+        classes = np.array([0,1,2,3,4,5,6,7,8,9])
+        model.classes_ = classes
+    elif dataset == "A2":
+        avg_coef = np.zeros((1,100))
+        coefs = np.zeros((num_clients,1,  100))
+        avg_intercept = np.zeros((1))
+        intercepts = np.zeros((num_clients, 1))
+        model.coef_ = np.random.rand(1, 100)
+        model.intercept_ = np.random.rand(1)
+        classes = np.array([0,1])
         model.classes_ = classes
     else:
         avg_coef = np.zeros((1,784))
@@ -145,7 +165,7 @@ for run in range(num_runs):
                         }
                 },
                 name =  "SVM" + ", round " + str(round),
-                image = "sgarst/federated-learning:fedLin1",
+                image = "sgarst/federated-learning:fedLin2",
                 organization_ids=[org_id],
                 collaboration_id= 1
             )

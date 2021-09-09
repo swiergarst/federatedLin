@@ -4,8 +4,11 @@ import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 sys.path.insert(1, os.path.join(sys.path[0], '../..'))
-from helper_functions import get_datasets, get_full_dataset, heatmap, average, scaffold
+from comp_functions import average, scaffold
+from config_functions import get_datasets, get_full_dataset
+from helper_functions import  heatmap
 from sklearn.linear_model import SGDClassifier
 import time
 dataset = "MNIST_2class"
@@ -59,7 +62,7 @@ y_test = y_test.numpy()
 for run in range(num_runs):
     seed = run + seed_offset
     np.random.seed(seed)
-    model = SGDClassifier(loss="hinge", penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, learning_rate="constant", eta0=lr_local, random_state = seed)
+    model = SGDClassifier(loss="log", penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, learning_rate="constant", eta0=lr_local, random_state = seed)
     
     if dataset == "MNIST_4class":
         coefs = np.zeros((num_clients, 4, 784))

@@ -40,12 +40,12 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci):
         m_copy2 = np.copy(model.intercept_)
         lr = model.get_params()['eta0']
 
-        model.coef_ = model.coef_ + lr * (c["coef"] - ci["coef"]) 
-        model.intercept_ = model.intercept_ + lr * (c["inter"] - ci["inter"])
+        model.coef_ = m_copy - lr * (c["coef"] - ci["coef"]) 
+        model.intercept_ = m_copy2 - lr * (c["inter"] - ci["inter"])
         #print(model.coef_.shape)
         #model.coef_ += c["coef"] - ci["coef"]
-        ci["coef"] = ci["coef"] - c["coef"] + (1/model.get_params()['eta0']) * (old_coef - m_copy)
-        ci["inter"] = ci["inter"] - c["inter"] + (1/model.get_params()['eta0']) * (old_inter - m_copy2)
+        ci["coef"] = ci["coef"] - c["coef"] + (1/lr) * (old_coef - model.coef_)
+        ci["inter"] = ci["inter"] - c["inter"] + (1/lr) * (old_inter - model.intercept_)
         #ci["coef"] = np.copy(ci["coef"] - c["coef"]) + (1/model.get_params()['eta0']) * np.copy((old_coef - model.coef_))
         #ci["inter"] = np.copy(ci["inter"] - c["inter"]) + (1/model.get_params()['eta0']) * np.copy((old_inter - model.intercept_))
 
