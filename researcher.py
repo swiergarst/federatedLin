@@ -43,31 +43,32 @@ client.setup_encryption(privkey)
 
 #torch
 
-lr_local = 5e-5 # 5e-3 for LR, 5e-5 for SVM (5e-4 for scaffold svm)
+lr_local = 5e-3# 5e-3 for LR, 5e-5 for SVM (5e-4 for scaffold svm)
 lr_global = 1
 
 
 ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
 #dataset and booleans
-dataset = 'MNIST_2class' #either MNIST_2class or MNIST_4class
-week = "../datafiles/w17/"
+dataset = 'fashion_MNIST' #either MNIST_2class or MNIST_4class
+week = "datafiles/w23/"
 classifier = "LR" #either SVM or LR
 
-save_file = False
+save_file = True
 class_imbalance = True
 sample_imbalance = False
-use_scaffold = True
-use_sizes = False
+use_scaffold = False
+use_sizes = True
 
 save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1)
 
 #federated settings
 num_global_rounds = 100
+num_local_rounds = 1
 num_clients = 10
-num_runs = 1
+num_runs = 4
 seed_offset = 0
-num_clients = 10
+
 
 if classifier == "SVM":
     loss = "hinge"
@@ -116,7 +117,7 @@ for run in range(num_runs):
         model.intercept_ = np.random.rand(10)
         classes = np.array([0,1,2,3,4,5,6,7,8,9])
         model.classes_ = classes
-    elif dataset == "A2":
+    elif dataset == "A2_PCA" or dataset == "3node":
         avg_coef = np.zeros((1,100))
         coefs = np.zeros((num_clients,1,  100))
         avg_intercept = np.zeros((1))
@@ -125,7 +126,8 @@ for run in range(num_runs):
         model.intercept_ = np.random.rand(1)
         classes = np.array([0,1])
         model.classes_ = classes
-    else:
+    
+    else: # MNIST 2class
         avg_coef = np.zeros((1,784))
         coefs = np.zeros((num_clients,1,  784))
         avg_intercept = np.zeros((1))
@@ -152,7 +154,7 @@ for run in range(num_runs):
 
         print("starting round", round)
         ### request task from clients
-        for i, org_id in enumerate (ids):
+        for i, org_id in enumerate (ids[0:num_clients]):
             round_task = client.post_task(
                 input_= {
                     'method' : 'train_and_test',
@@ -165,7 +167,7 @@ for run in range(num_runs):
                         }
                 },
                 name =  "SVM" + ", round " + str(round),
-                image = "sgarst/federated-learning:fedLin2",
+                image = "sgarst/federated-learning:fedLin4",
                 organization_ids=[org_id],
                 collaboration_id= 1
             )
@@ -243,7 +245,7 @@ plt.plot(x, global_accuracies)
 #plt.plot(x, complete_test_results)
 plt.show()
 
-plt.plot(x[0:5], c_log[0:5])
-plt.plot(x[0:5], ci_log[0:5])
-#plt.show()
+plt.plot(x, c_log)
+plt.plot(x, ci_log)
+plt.show()
     ### generate new model parameters
