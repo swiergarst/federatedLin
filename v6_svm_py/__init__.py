@@ -1,6 +1,7 @@
 from sklearn.linear_model import SGDClassifier
 import pandas as pd
 import numpy as np
+import math
 from vantage6.client import Client
 
 
@@ -20,7 +21,7 @@ def master(client, data, id_array, input_array):
 
     
 
-def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_rounds):
+def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_rounds, num_local_batches):
 
 
     X_train_arr = data.loc[data['test/train'] == 'train'].drop(columns = ['test/train', 'label']).values
@@ -31,9 +32,13 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_roun
     old_coef = np.copy(model.coef_)
     old_inter = np.copy(model.intercept_)
 
+    batch_size = math.floor(X_train_arr.size[0]/num_local_batches)
+    
     for round in range(num_local_rounds):
-
-        model.partial_fit(X_train_arr, y_train_arr, classes=classes)
+        for batch in range(num_local_batches):
+            X_train_b = X_train_arr[batch*batch_size:(batch+1) *batch_size]
+            y_train_b = y_train_arr[batch*batch_size:(batch+1) *batch_size]
+        model.partial_fit(X_train_b, y_train_b, classes=classes)
 
         if use_scaffold:
 
@@ -45,8 +50,8 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_roun
             model.intercept_ = m_copy2 - lr * (c["inter"] - ci["inter"])
             #print(model.coef_.shape)
             #model.coef_ += c["coef"] - ci["coef"]
-            ci["coef"] = ci["coef"] - c["coef"] + (1/lr) * (old_coef - m_copy)
-            ci["inter"] = ci["inter"] - c["inter"] + (1/lr) * (old_inter - m_copy2)
+            ci["coef"] = ci["coef"] - c["coef"] + (1/(lr* num_local_batches)) * (old_coef - m_copy)
+            ci["inter"] = ci["inter"] - c["inter"] + (1/(lr* num_local_batches)) * (old_inter - m_copy2)
             #ci["coef"] = np.copy(ci["coef"] - c["coef"]) + (1/model.get_params()['eta0']) * np.copy((old_coef - model.coef_))
             #ci["inter"] = np.copy(ci["inter"] - c["inter"]) + (1/model.get_params()['eta0']) * np.copy((old_inter - model.intercept_))
 
