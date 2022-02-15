@@ -38,38 +38,39 @@ client.setup_encryption(privkey)
 
 
 
-
-### parameter settings
-
-#torch
-
-lr_local = 5e-4# 5e-3 for LR, 5e-5 for SVM (5e-4 for scaffold svm)
-lr_global = 1
-
-
 ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
+### parameter settings ###
+
+#learning rates
+lr_local = 5e-4
+lr_global = 1 #only affects scaffold. 1 is recommended
+
+
 #dataset and booleans
-dataset = 'MNIST_2class' #either MNIST_2class or MNIST_4class
-week = "datafiles/w28/"
+dataset = 'MNIST_2class' #options: MNIST_2class, MNIST_4class, fashion_MNIST, A2_PCA, 3node
+week = "datafiles/w28/" #folder for saving data files 
 classifier = "LR" #either SVM or LR
 
-save_file = True
+save_file = True # whether to save results in .npy files
+use_scaffold = False # if true, the SCAFFOLD algorithm is used (instead of federated averaging)
+
+# these settings change the distribution of the datasets between clients. sample_imbalance is not checked if class_imbalance is set to true
 class_imbalance = False
-sample_imbalance = False
-use_scaffold = False
-use_sizes = False
+sample_imbalance = False 
+
+use_sizes = False # if set to false, the unweighted average is taken instead of the weighted average
 
 save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1)
 
 #federated settings
-num_global_rounds = 100
-num_local_rounds = 1
-num_local_epochs = 1
-num_clients = 10
-num_runs =  4
-seed_offset = 0
+num_global_rounds = 100 #communication rounds
+num_local_epochs = 1 #local epochs between each communication round (currently not implemented)
+num_clients = 10 #amount of federated clients (make sure this matches the amount of running vantage6 clients)
+num_runs =  4  #amount of experiments to run using consecutive seeds
+seed_offset = 0 #decides which seeds to use: seed = seed_offset + current_run_number
 
+### end of settings ###
 
 if classifier == "SVM":
     loss = "hinge"
@@ -82,7 +83,6 @@ else:
 # data structures to store results
 c_log = np.zeros((num_global_rounds))
 ci_log = np.zeros((num_global_rounds, num_clients))
-
 
 prevmap = heatmap(num_clients, num_global_rounds)
 newmap = heatmap(num_clients, num_global_rounds)
@@ -249,4 +249,4 @@ plt.show()
 plt.plot(x, c_log)
 plt.plot(x, ci_log)
 plt.show()
-    ### generate new model parameters
+
