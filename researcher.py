@@ -43,30 +43,31 @@ client.setup_encryption(privkey)
 
 #torch
 
-lr_local = 5e-3# 5e-3 for LR, 5e-5 for SVM (5e-4 for scaffold svm)
+lr_local = 5e-4# 5e-3 for LR, 5e-5 for SVM (5e-4 for scaffold svm)
 lr_global = 1
 
 
 ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 
 #dataset and booleans
-dataset = 'fashion_MNIST' #either MNIST_2class or MNIST_4class
-week = "datafiles/w23/"
+dataset = 'MNIST_2class' #either MNIST_2class or MNIST_4class
+week = "datafiles/w28/"
 classifier = "LR" #either SVM or LR
 
 save_file = True
-class_imbalance = True
+class_imbalance = False
 sample_imbalance = False
 use_scaffold = False
-use_sizes = True
+use_sizes = False
 
 save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1)
 
 #federated settings
 num_global_rounds = 100
 num_local_rounds = 1
+num_local_epochs = 1
 num_clients = 10
-num_runs = 4
+num_runs =  4
 seed_offset = 0
 
 
@@ -75,7 +76,7 @@ if classifier == "SVM":
 elif classifier == "LR":
     loss = "log"
 else:
-    raise(Exception("unkown classifier provided"))
+    raise(Exception("unknown classifier provided"))
 
 
 # data structures to store results
@@ -228,7 +229,7 @@ for run in range(num_runs):
             np.save(f, accuracies)
         with open (week + save_str + "_global_seed" + str(seed) + ".npy", 'wb') as f:
             np.save(f, global_accuracies)
-    clear_database()
+    #clear_database()
 
 #rint(repr(accuracies))
 print(repr(np.mean(accuracies, axis=1)))
