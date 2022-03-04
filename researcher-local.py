@@ -17,8 +17,9 @@ dataset = "MNIST_2class"
 save_file  = False
 class_imbalance = True
 sample_imbalance = False
-use_scaffold = True
+use_scaffold = False
 use_sizes = False
+use_dgd = True
 ### connect to server
 datasets = get_datasets(dataset, class_imbalance, sample_imbalance)
 
@@ -40,8 +41,23 @@ lr_global = 1
 num_runs = 1
 num_global_rounds = 20
 
+num_local_batches = 1
+num_local_epochs = 1
+
 num_clients = 10
 seed_offset = 0
+
+
+A_alt = np.array([[0,1,9],
+                [1,0,2],
+                [2,1,3],
+                [3,2,4],
+                [4,3,5],
+                [5,4,6],
+                [6,5,7],
+                [7,6,8],
+                [8,7,9],
+                [9,8,0]])
 
 
 avg_coef = np.zeros((1,784))
@@ -97,6 +113,7 @@ for run in range(num_runs):
     map = heatmap(num_clients, num_global_rounds )
     for round in range(num_global_rounds):
         
+        print("round ", round)
         for i in range(num_clients):
             old_ci[i] = ci[i].copy()
         task_list = np.empty(num_clients, dtype=object)
@@ -107,10 +124,17 @@ for run in range(num_runs):
                     'method' : 'train_and_test',
                     'kwargs' : {
                         'model' : model,
+                        'nb_parameters' : { 
+                                'coef' : coefs[A_alt[i,:]],
+                                'inter' : intercepts[A_alt[i,:]]
+                        },
                         'classes': classes,
                         'use_scaffold': use_scaffold,
+                        'use_dgd' : use_dgd,
                         'c' : c,
-                        'ci' : ci[i]
+                        'ci' : ci[i],
+                        'num_local_rounds' : num_local_epochs,
+                        'num_local_batches' : num_local_batches
                         }
                 },
                 organization_ids=[org_id]                
@@ -140,8 +164,11 @@ for run in range(num_runs):
                         dataset_sizes[task_i] = result[0][4]
                         solved_tasks.append(task_i)
             if len(solved_tasks) == num_clients:
+                print("finished!")
                 finished = True
+                break
             print("waiting")
+            #print(len(solved_tasks))
             time.sleep(1)   
 
 

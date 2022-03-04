@@ -55,22 +55,23 @@ classifier = "LR" #either SVM or LR
 
 save_file = True # whether to save results in .npy files
 use_scaffold = False # if true, the SCAFFOLD algorithm is used (instead of federated averaging)
-use_dgd = False
+use_dgd = True
 
 
 # these settings change the distribution of the datasets between clients. sample_imbalance is not checked if class_imbalance is set to true
-class_imbalance = False
+class_imbalance = True
 sample_imbalance = False 
 
-use_sizes = False # if set to false, the unweighted average is taken instead of the weighted average
+use_sizes = True # if set to false, the unweighted average is taken instead of the weighted average
 
 save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1, use_dgd)
 
 #federated settings
 num_global_rounds = 100 #communication rounds
 num_local_epochs = 1 #local epochs between each communication round (currently not implemented)
+num_local_batches = 1
 num_clients = 10 #amount of federated clients (make sure this matches the amount of running vantage6 clients)
-num_runs =  4  #amount of experiments to run using consecutive seeds
+num_runs =  1  #amount of experiments to run using consecutive seeds
 seed_offset = 0 #decides which seeds to use: seed = seed_offset + current_run_number
 
 A_alt = np.array([[0,1,9],
@@ -139,19 +140,21 @@ for run in range(num_runs):
                     'method' : 'train_and_test',
                     'kwargs' : {
                         'model' : model,
-                        'nb_params' : { 
-                                'coefs' : coefs[A_alt[i,:]],
+                        'nb_parameters' : { 
+                                'coef' : coefs[A_alt[i,:]],
                                 'inter' : intercepts[A_alt[i,:]]
                         },
                         'classes' : model.classes_,
                         'use_scaffold': use_scaffold,
                         'use_dgd' : use_dgd,
                         'c' : c,
-                        'ci' : ci[i]
+                        'ci' : ci[i],
+                        'num_local_rounds' : num_local_epochs,
+                        'num_local_batches' : num_local_batches
                         }
                 },
                 name =  "SVM" + ", round " + str(round),
-                image = "sgarst/federated-learning:fedLin4",
+                image = "sgarst/federated-learning:fedLin5",
                 organization_ids=[org_id],
                 collaboration_id= 1
             )

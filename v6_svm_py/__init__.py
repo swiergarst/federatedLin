@@ -32,8 +32,14 @@ def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold
     old_coef = np.copy(model.coef_)
     old_inter = np.copy(model.intercept_)
 
-    batch_size = math.floor(X_train_arr.size[0]/num_local_batches)
+ 
+    batch_size = math.floor(X_train_arr.shape[0]/num_local_batches)
     
+
+    if use_dgd:
+        model.coef_ = np.mean(nb_parameters["coef"], axis =0)
+        model.intercept_ = np.mean(nb_parameters["inter"], axis = 0)
+
     for round in range(num_local_rounds):
         for batch in range(num_local_batches):
             X_train_b = X_train_arr[batch*batch_size:(batch+1) *batch_size]
@@ -41,9 +47,7 @@ def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold
         model.partial_fit(X_train_b, y_train_b, classes=classes)
 
 
-        if use_dgd:
-            model.coef_ = np.mean(nb_parameters["coef"], axis =0)
-            model.intercept_ = np.mean(nb_parameters["inter"], axis = 0)
+
 
         if use_scaffold:
             m_copy = np.copy(model.coef_)
