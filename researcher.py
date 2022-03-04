@@ -12,6 +12,7 @@ import os
 import time 
 import pandas as pd
 from vantage6.tools.util import info
+from lin_config_functions import init_model
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 from sklearn.linear_model import SGDClassifier
@@ -54,6 +55,8 @@ classifier = "LR" #either SVM or LR
 
 save_file = True # whether to save results in .npy files
 use_scaffold = False # if true, the SCAFFOLD algorithm is used (instead of federated averaging)
+use_dgd = False
+
 
 # these settings change the distribution of the datasets between clients. sample_imbalance is not checked if class_imbalance is set to true
 class_imbalance = False
@@ -61,7 +64,7 @@ sample_imbalance = False
 
 use_sizes = False # if set to false, the unweighted average is taken instead of the weighted average
 
-save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1)
+save_str = get_save_str(dataset, classifier, class_imbalance, sample_imbalance, use_scaffold, use_sizes, lr_local, 1, 1, use_dgd)
 
 #federated settings
 num_global_rounds = 100 #communication rounds
@@ -69,6 +72,17 @@ num_local_epochs = 1 #local epochs between each communication round (currently n
 num_clients = 10 #amount of federated clients (make sure this matches the amount of running vantage6 clients)
 num_runs =  4  #amount of experiments to run using consecutive seeds
 seed_offset = 0 #decides which seeds to use: seed = seed_offset + current_run_number
+
+A_alt = np.array([[0,1,9],
+                [1,0,2],
+                [2,1,3],
+                [3,2,4],
+                [4,3,5],
+                [5,4,6],
+                [6,5,7],
+                [7,6,8],
+                [8,7,9],
+                [9,8,0]])
 
 ### end of settings ###
 
@@ -98,45 +112,9 @@ for run in range(num_runs):
     global_accuracies = np.zeros((num_global_rounds))
     seed = run + seed_offset
     np.random.seed(seed)
-    model = SGDClassifier(loss=loss, penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = seed, learning_rate='constant', eta0=lr_local)
-    
-    if dataset == "MNIST_4class":
-        coefs = np.zeros((num_clients, 4, 784))
-        avg_coef = np.zeros((4,784))
-        avg_intercept = np.zeros((4))
-        intercepts = np.zeros((num_clients, 4))
-        model.coef_ = np.random.rand(4, 784)
-        model.intercept_ = np.random.rand(4)
-        classes = np.array([0,1,2,3])
-        model.classes_ = classes
-    elif dataset == "fashion_MNIST":
-        coefs = np.zeros((num_clients, 10, 784))
-        avg_coef = np.zeros((10,784))
-        avg_intercept = np.zeros((10))
-        intercepts = np.zeros((num_clients, 10))
-        model.coef_ = np.random.rand(10, 784)
-        model.intercept_ = np.random.rand(10)
-        classes = np.array([0,1,2,3,4,5,6,7,8,9])
-        model.classes_ = classes
-    elif dataset == "A2_PCA" or dataset == "3node":
-        avg_coef = np.zeros((1,100))
-        coefs = np.zeros((num_clients,1,  100))
-        avg_intercept = np.zeros((1))
-        intercepts = np.zeros((num_clients, 1))
-        model.coef_ = np.random.rand(1, 100)
-        model.intercept_ = np.random.rand(1)
-        classes = np.array([0,1])
-        model.classes_ = classes
-    
-    else: # MNIST 2class
-        avg_coef = np.zeros((1,784))
-        coefs = np.zeros((num_clients,1,  784))
-        avg_intercept = np.zeros((1))
-        intercepts = np.zeros((num_clients, 1))
-        model.coef_ = np.random.rand(1, 784)
-        model.intercept_ = np.random.rand(1)
-        classes = np.array([0,1])
-        model.classes_ = classes
+    uninit_model = SGDClassifier(loss=loss, penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = seed, learning_rate='constant', eta0=lr_local)
+    model, coefs, intercepts = init_model(uninit_model, dataset, num_clients)
+
     c = {
         "coef" : np.zeros_like(model.coef_),
         "inter" : np.zeros_like(model.intercept_)
@@ -161,8 +139,13 @@ for run in range(num_runs):
                     'method' : 'train_and_test',
                     'kwargs' : {
                         'model' : model,
-                        'classes' : classes,
+                        'nb_params' : { 
+                                'coefs' : coefs[A_alt[i,:]],
+                                'inter' : intercepts[A_alt[i,:]]
+                        },
+                        'classes' : model.classes_,
                         'use_scaffold': use_scaffold,
+                        'use_dgd' : use_dgd,
                         'c' : c,
                         'ci' : ci[i]
                         }
@@ -197,23 +180,23 @@ for run in range(num_runs):
             time.sleep(1)   
         
         
-
-        if use_scaffold:
-            avg_coef, c = scaffold(dataset, None, model.coef_, coefs, c, old_ci, ci, lr_global, key = "coef")
-            avg_intercept, c = scaffold(dataset, None, model.intercept_, intercepts, c, old_ci, ci, lr_global,key = "inter")
-            c_log[round] = c['coef'].max()
-            for i in range(num_clients):
-                ci_log[round, i] = ci[i]['coef'].max()
-        else:
-            avg_coef = average(coefs, dataset_sizes, None, dataset, None, use_sizes, False)
-            avg_intercept = average(intercepts, dataset_sizes, None, dataset, None, use_sizes, False)
+        if not use_dgd:
+            if use_scaffold:
+                avg_coef, c = scaffold(dataset, None, model.coef_, coefs, c, old_ci, ci, lr_global, key = "coef")
+                avg_intercept, c = scaffold(dataset, None, model.intercept_, intercepts, c, old_ci, ci, lr_global,key = "inter")
+                c_log[round] = c['coef'].max()
+                for i in range(num_clients):
+                    ci_log[round, i] = ci[i]['coef'].max()
+            else:
+                avg_coef = average(coefs, dataset_sizes, None, dataset, None, use_sizes, False)
+                avg_intercept = average(intercepts, dataset_sizes, None, dataset, None, use_sizes, False)
 
 
         
 
 
-        model.coef_ = np.copy(avg_coef)
-        model.intercept_ = np.copy(avg_intercept)
+            model.coef_ = np.copy(avg_coef)
+            model.intercept_ = np.copy(avg_intercept)
         global_accuracies[round] = model.score(X_test, y_test)
         #print(coefs[0].shape)
         prevmap.save_round(round, coefs, avg_coef, is_dict=False)

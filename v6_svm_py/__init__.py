@@ -21,7 +21,7 @@ def master(client, data, id_array, input_array):
 
     
 
-def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_rounds, num_local_batches):
+def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold, c, ci, num_local_rounds, num_local_batches):
 
 
     X_train_arr = data.loc[data['test/train'] == 'train'].drop(columns = ['test/train', 'label']).values
@@ -40,20 +40,21 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_roun
             y_train_b = y_train_arr[batch*batch_size:(batch+1) *batch_size]
         model.partial_fit(X_train_b, y_train_b, classes=classes)
 
-        if use_scaffold:
 
+        if use_dgd:
+            model.coef_ = np.mean(nb_parameters["coef"], axis =0)
+            model.intercept_ = np.mean(nb_parameters["inter"], axis = 0)
+
+        if use_scaffold:
             m_copy = np.copy(model.coef_)
             m_copy2 = np.copy(model.intercept_)
             lr = model.get_params()['eta0']
 
             model.coef_ = m_copy - lr * (c["coef"] - ci["coef"]) 
             model.intercept_ = m_copy2 - lr * (c["inter"] - ci["inter"])
-            #print(model.coef_.shape)
-            #model.coef_ += c["coef"] - ci["coef"]
             ci["coef"] = ci["coef"] - c["coef"] + (1/(lr* num_local_batches)) * (old_coef - m_copy)
             ci["inter"] = ci["inter"] - c["inter"] + (1/(lr* num_local_batches)) * (old_inter - m_copy2)
-            #ci["coef"] = np.copy(ci["coef"] - c["coef"]) + (1/model.get_params()['eta0']) * np.copy((old_coef - model.coef_))
-            #ci["inter"] = np.copy(ci["inter"] - c["inter"]) + (1/model.get_params()['eta0']) * np.copy((old_inter - model.intercept_))
+
 
         new_coef = np.copy(model.coef_)
         new_inter = np.copy(model.intercept_)
