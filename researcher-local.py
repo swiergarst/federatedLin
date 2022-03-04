@@ -34,7 +34,7 @@ org_ids = [organization["id"] for organization in organizations]
 
 
 
-lr_local = 5e-4
+lr_local = 5e-1
 lr_global = 1
 
 
@@ -175,22 +175,21 @@ for run in range(num_runs):
        
        
         ## aggregate responses
-        
+        if not use_dgd:
+            if use_scaffold:
+                avg_coef, c = scaffold(dataset, None, model.coef_, coefs, c, old_ci, ci, lr_global, key = "coef")
+                avg_intercept, c = scaffold(dataset, None, model.intercept_, intercepts, c, old_ci, ci, lr_global,key = "inter")
+                c_log[round] = c['coef'][0,375]
+                c_ind_log[round] = np.argmax(c['coef'])
+                for i in range(num_clients):
+                    ci_log[round, i] = ci[i]['coef'][0,375]
+                    ci_ind_log[round,i] = np.argmax(ci[i]['coef'])
+            else:
+                avg_coef = average(coefs, dataset_sizes, None, dataset, None, use_sizes, False)
+                avg_intercept = average(intercepts, dataset_sizes, None, dataset, None, use_sizes, False)
 
-        if use_scaffold:
-            avg_coef, c = scaffold(dataset, None, model.coef_, coefs, c, old_ci, ci, lr_global, key = "coef")
-            avg_intercept, c = scaffold(dataset, None, model.intercept_, intercepts, c, old_ci, ci, lr_global,key = "inter")
-            c_log[round] = c['coef'][0,375]
-            c_ind_log[round] = np.argmax(c['coef'])
-            for i in range(num_clients):
-                ci_log[round, i] = ci[i]['coef'][0,375]
-                ci_ind_log[round,i] = np.argmax(ci[i]['coef'])
-        else:
-            avg_coef = average(coefs, dataset_sizes, None, dataset, None, use_sizes, False)
-            avg_intercept = average(intercepts, dataset_sizes, None, dataset, None, use_sizes, False)
-
-        model.coef_ = np.copy(avg_coef)
-        model.intercept_ = np.copy(avg_intercept)
+            model.coef_ = np.copy(avg_coef)
+            model.intercept_ = np.copy(avg_intercept)
 
 
         global_accuracies[run, round] = model.score(X_test, y_test)
@@ -219,7 +218,7 @@ x = np.arange(num_global_rounds)
 #print(np.mean(accuracies, axis=1))
 plt.plot(np.arange(num_global_rounds), np.mean(accuracies, axis = 1)[0,:])
 
-plt.plot(np.arange(num_global_rounds), global_accuracies[0,:])
+#plt.plot(np.arange(num_global_rounds), global_accuracies[0,:])
 plt.show()
 
 #print(c_ind_log)

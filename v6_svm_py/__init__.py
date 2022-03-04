@@ -29,8 +29,6 @@ def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold
     X_test_arr = data.loc[data['test/train'] == 'test'].drop(columns = ["test/train", "label"]).values
     y_test_arr = data.loc[data['test/train'] == 'test']['label'].values
 
-    old_coef = np.copy(model.coef_)
-    old_inter = np.copy(model.intercept_)
 
  
     batch_size = math.floor(X_train_arr.shape[0]/num_local_batches)
@@ -40,11 +38,15 @@ def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold
         model.coef_ = np.mean(nb_parameters["coef"], axis =0)
         model.intercept_ = np.mean(nb_parameters["inter"], axis = 0)
 
+    old_coef = np.copy(model.coef_)
+    old_inter = np.copy(model.intercept_)
+
+
     for round in range(num_local_rounds):
         for batch in range(num_local_batches):
             X_train_b = X_train_arr[batch*batch_size:(batch+1) *batch_size]
             y_train_b = y_train_arr[batch*batch_size:(batch+1) *batch_size]
-        model.partial_fit(X_train_b, y_train_b, classes=classes)
+            model.partial_fit(X_train_b, y_train_b, classes=classes)
 
 
 
@@ -60,8 +62,8 @@ def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold
             ci["inter"] = ci["inter"] - c["inter"] + (1/(lr* num_local_batches)) * (old_inter - m_copy2)
 
 
-        new_coef = np.copy(model.coef_)
-        new_inter = np.copy(model.intercept_)
+    new_coef = np.copy(model.coef_)
+    new_inter = np.copy(model.intercept_)
 
     # bit of a hack to 'test before train'
     model.coef_  = np.copy(old_coef)

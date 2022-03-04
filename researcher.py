@@ -44,7 +44,7 @@ ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 ### parameter settings ###
 
 #learning rates
-lr_local = 5e-4
+lr_local = 5e-3
 lr_global = 1 #only affects scaffold. 1 is recommended
 
 
@@ -154,7 +154,7 @@ for run in range(num_runs):
                         }
                 },
                 name =  "SVM" + ", round " + str(round),
-                image = "sgarst/federated-learning:fedLin5",
+                image = "sgarst/federated-learning:fedLin6",
                 organization_ids=[org_id],
                 collaboration_id= 1
             )
@@ -200,10 +200,10 @@ for run in range(num_runs):
 
             model.coef_ = np.copy(avg_coef)
             model.intercept_ = np.copy(avg_intercept)
-        global_accuracies[round] = model.score(X_test, y_test)
+            global_accuracies[round] = model.score(X_test, y_test)
         #print(coefs[0].shape)
-        prevmap.save_round(round, coefs, avg_coef, is_dict=False)
-        newmap.save_round(round, coefs, avg_coef, is_dict=False)
+            prevmap.save_round(round, coefs, avg_coef, is_dict=False)
+            newmap.save_round(round, coefs, avg_coef, is_dict=False)
         # 'global' test
         
 
