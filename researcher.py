@@ -15,6 +15,7 @@ from vantage6.tools.util import info
 from lin_config_functions import init_model
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
+sys.path.insert(1, os.path.join(sys.path[0], '../..'))
 from sklearn.linear_model import SGDClassifier
 from io import BytesIO
 from vantage6.client import Client
@@ -50,7 +51,7 @@ lr_global = 1 #only affects scaffold. 1 is recommended
 
 #dataset and booleans
 dataset = 'MNIST_2class' #options: MNIST_2class, MNIST_4class, fashion_MNIST, A2_PCA, 3node
-week = "datafiles/w28/" #folder for saving data files 
+week = "datafiles/dgd/" #folder for saving data files 
 classifier = "LR" #either SVM or LR
 
 save_file = True # whether to save results in .npy files
@@ -71,7 +72,7 @@ num_global_rounds = 100 #communication rounds
 num_local_epochs = 1 #local epochs between each communication round (currently not implemented)
 num_local_batches = 1
 num_clients = 10 #amount of federated clients (make sure this matches the amount of running vantage6 clients)
-num_runs =  1  #amount of experiments to run using consecutive seeds
+num_runs =  4  #amount of experiments to run using consecutive seeds
 seed_offset = 0 #decides which seeds to use: seed = seed_offset + current_run_number
 
 A_alt = np.array([[0,1,9],
@@ -114,7 +115,7 @@ for run in range(num_runs):
     seed = run + seed_offset
     np.random.seed(seed)
     uninit_model = SGDClassifier(loss=loss, penalty="l2", max_iter = 1, warm_start=True, fit_intercept=True, random_state = seed, learning_rate='constant', eta0=lr_local)
-    model, coefs, intercepts = init_model(uninit_model, dataset, num_clients)
+    model, coefs, intercepts = init_model(uninit_model, dataset, num_clients, seed)
 
     c = {
         "coef" : np.zeros_like(model.coef_),
@@ -154,7 +155,7 @@ for run in range(num_runs):
                         }
                 },
                 name =  "SVM" + ", round " + str(round),
-                image = "sgarst/federated-learning:fedLin6",
+                image = "sgarst/federated-learning:fedLin7",
                 organization_ids=[org_id],
                 collaboration_id= 1
             )
@@ -184,6 +185,7 @@ for run in range(num_runs):
         
         
         if not use_dgd:
+            print("averaging..")
             if use_scaffold:
                 avg_coef, c = scaffold(dataset, None, model.coef_, coefs, c, old_ci, ci, lr_global, key = "coef")
                 avg_intercept, c = scaffold(dataset, None, model.intercept_, intercepts, c, old_ci, ci, lr_global,key = "inter")

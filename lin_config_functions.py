@@ -1,7 +1,8 @@
 import numpy as np
 
 
-def init_model(model, dataset, num_clients):
+def init_model(model, dataset, num_clients, seed):
+    np.random.seed(seed)
     if dataset == "MNIST_4class":
         coefs = np.zeros((num_clients, 4, 784))
         intercepts = np.zeros((num_clients, 4))
