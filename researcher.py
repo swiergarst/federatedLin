@@ -16,6 +16,8 @@ from lin_config_functions import init_model
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 sys.path.insert(1, os.path.join(sys.path[0], '../..'))
+#sys.path.insert(1, os.path.join(sys.path[0], '../../..'))
+
 from sklearn.linear_model import SGDClassifier
 from io import BytesIO
 from vantage6.client import Client
@@ -45,14 +47,14 @@ ids = [org['id'] for org in client.collaboration.get(1)['organizations']]
 ### parameter settings ###
 
 #learning rates
-lr_local = 5e-3
+lr_local = 5e-5
 lr_global = 1 #only affects scaffold. 1 is recommended
 
 
 #dataset and booleans
-dataset = 'MNIST_2class' #options: MNIST_2class, MNIST_4class, fashion_MNIST, A2_PCA, 3node
-week = "datafiles/dgd/" #folder for saving data files 
-classifier = "LR" #either SVM or LR
+dataset = 'fashion_MNIST' #options: MNIST_2class, MNIST_4class, fashion_MNIST, A2_PCA, 3node
+week = "afstuderen/datafiles/svm/dgd/" #folder for saving data files 
+classifier = "SVM" #either SVM or LR
 
 save_file = True # whether to save results in .npy files
 use_scaffold = False # if true, the SCAFFOLD algorithm is used (instead of federated averaging)
@@ -75,6 +77,11 @@ num_clients = 10 #amount of federated clients (make sure this matches the amount
 num_runs =  4  #amount of experiments to run using consecutive seeds
 seed_offset = 0 #decides which seeds to use: seed = seed_offset + current_run_number
 
+
+
+
+
+'''
 A_alt = np.array([[0,1,9],
                 [1,0,2],
                 [2,1,3],
@@ -85,7 +92,7 @@ A_alt = np.array([[0,1,9],
                 [7,6,8],
                 [8,7,9],
                 [9,8,0]])
-
+'''
 ### end of settings ###
 
 if classifier == "SVM":
@@ -110,6 +117,19 @@ y_test = y_test.numpy()
 
 ### main loop
 for run in range(num_runs):
+
+    # generation of ring graph (neighbours generated randomly)
+    clients_seq = np.arange(num_clients)
+
+    np.random.shuffle(clients_seq)
+
+    A_alt = np.zeros((num_clients, 3), dtype=int)
+
+    for client_i, node in enumerate (clients_seq):
+        A_alt[node,0] = node
+        A_alt[node,1] = clients_seq[client_i - 1]
+        A_alt[node,2] = clients_seq[(client_i + 1) % num_clients]
+
     accuracies = np.zeros(( num_clients, num_global_rounds))
     global_accuracies = np.zeros((num_global_rounds))
     seed = run + seed_offset
@@ -207,17 +227,20 @@ for run in range(num_runs):
             prevmap.save_round(round, coefs, avg_coef, is_dict=False)
             newmap.save_round(round, coefs, avg_coef, is_dict=False)
         # 'global' test
-        
+        if round % 10 == 0:
+            clear_database()
 
     if save_file:   
-        prevmap.save_map(week+ save_str + "prevmap_seed" + str(seed) + ".npy")
-        newmap.save_map(week + save_str + "nc_newmap_seed" + str(seed) + ".npy")
+        if not use_dgd:
+            prevmap.save_map(week+ save_str + "prevmap_seed" + str(seed) + ".npy")
+            newmap.save_map(week + save_str + "nc_newmap_seed" + str(seed) + ".npy")
         ### save arrays to files
         with open (week + save_str + "_local_seed" + str(seed) + ".npy", 'wb') as f:
             np.save(f, accuracies)
         with open (week + save_str + "_global_seed" + str(seed) + ".npy", 'wb') as f:
             np.save(f, global_accuracies)
-    #clear_database()
+
+
 
 #rint(repr(accuracies))
 print(repr(np.mean(accuracies, axis=1)))
