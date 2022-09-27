@@ -21,7 +21,7 @@ def master(client, data, id_array, input_array):
 
     
 
-def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold, c, ci, num_local_rounds, num_local_batches):
+def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_rounds, num_local_batches, weighted_lr = False, lr_pref = None):
 
 
     X_train_arr = data.loc[data['test/train'] == 'train'].drop(columns = ['test/train', 'label']).values
@@ -29,14 +29,18 @@ def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold
     X_test_arr = data.loc[data['test/train'] == 'test'].drop(columns = ["test/train", "label"]).values
     y_test_arr = data.loc[data['test/train'] == 'test']['label'].values
 
+    if weighted_lr:
+        dset_size = X_train_arr.shape[0]
+        lr_local = lr_pref * dset_size
+        model.set_params({"eta0" : lr_local})
 
  
     batch_size = math.floor(X_train_arr.shape[0]/num_local_batches)
     
 
-    if use_dgd:
-        model.coef_ = np.mean(nb_parameters["coef"], axis =0)
-        model.intercept_ = np.mean(nb_parameters["inter"], axis = 0)
+    #if use_dgd:
+    #    model.coef_ = np.mean(nb_parameters["coef"], axis =0)
+    #    model.intercept_ = np.mean(nb_parameters["inter"], axis = 0)
 
     old_coef = np.copy(model.coef_)
     old_inter = np.copy(model.intercept_)
@@ -71,4 +75,4 @@ def RPC_train_and_test(data, model, nb_parameters, classes,use_dgd, use_scaffold
     result = model.score(X_test_arr, y_test_arr)
         
  
-    return(result, new_coef, new_inter, ci, X_train_arr.shape[0])
+    return(result, new_coef, new_inter, ci, dset_size)
