@@ -75,7 +75,7 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_roun
     model.intercept_ = np.copy(old_inter)
     result = model.score(X_test_arr, y_test_arr)
     fpr, tpr, _ = roc_curve(y_test_arr, model.predict(X_test_arr))
-    auc = auc(fpr, tpr)
+    aucs = auc(fpr, tpr)
     cm = confusion_matrix(y_test_arr, model.predict(X_test_arr))
  
-    return(result, new_coef, new_inter, ci, dset_size, auc, cm)
+    return(result, new_coef, new_inter, ci, dset_size, aucs, cm)
