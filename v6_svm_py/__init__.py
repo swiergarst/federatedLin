@@ -1,4 +1,5 @@
 from sklearn.linear_model import SGDClassifier
+from sklearn.metrics import roc_curve, auc, confusion_matrix
 import pandas as pd
 import numpy as np
 import math
@@ -73,6 +74,8 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_roun
     model.coef_  = np.copy(old_coef)
     model.intercept_ = np.copy(old_inter)
     result = model.score(X_test_arr, y_test_arr)
-        
+    fpr, tpr, _ = roc_curve(y_test_arr, model.predict(X_test_arr))
+    auc = auc(fpr, tpr)
+    cm = confusion_matrix(y_test_arr, model.predict(X_test_arr))
  
-    return(result, new_coef, new_inter, ci, dset_size)
+    return(result, new_coef, new_inter, ci, dset_size, auc, cm)
