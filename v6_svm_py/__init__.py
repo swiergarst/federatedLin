@@ -29,9 +29,9 @@ def RPC_train_and_test(data, model, classes, use_scaffold, c, ci, num_local_roun
     y_train_arr = data.loc[data['test/train'] == 'train']['label'].values
     X_test_arr = data.loc[data['test/train'] == 'test'].drop(columns = ["test/train", "label"]).values
     y_test_arr = data.loc[data['test/train'] == 'test']['label'].values
-
+    dset_size = X_train_arr.shape[0]
     if weighted_lr:
-        dset_size = X_train_arr.shape[0]
+        
         lr_local = lr_pref * dset_size
         model.set_params(**{"eta0" : lr_local})
 
