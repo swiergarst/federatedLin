@@ -17,7 +17,7 @@ here = path.abspath(path.dirname(__file__))
 setup(
     name='v6_svm_py',
     version="1.0.0",
-    description='simple neural net implementation',
+    description='simple linear classifiers federated',
     #long_description=long_description,
     #long_description_content_type='text/markdown',
     #url='https://github.com/IKNL/v6_boilerplate-py',
@@ -26,8 +26,8 @@ setup(
     install_requires=[
         'sklearn',
         #'torch',
-        'numpy'
-        # 'vantage6-client'
+        'numpy',
+        'vantage6-client'
     ]
     # ,
     # extras_require={

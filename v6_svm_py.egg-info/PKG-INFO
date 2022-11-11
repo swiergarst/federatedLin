@@ -1,9 +1,5 @@
-Metadata-Version: 1.2
+Metadata-Version: 2.1
 Name: v6-svm-py
 Version: 1.0.0
-Summary: simple neural net implementation
-Home-page: UNKNOWN
-License: UNKNOWN
-Description: UNKNOWN
-Platform: UNKNOWN
+Summary: simple linear classifiers federated
 Requires-Python: >=3.6

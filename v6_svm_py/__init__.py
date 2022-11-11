@@ -1,9 +1,8 @@
-from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import roc_curve, auc, confusion_matrix
-import pandas as pd
+
 import numpy as np
 import math
-from vantage6.client import Client
+
 
 
 

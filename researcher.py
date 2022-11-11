@@ -12,7 +12,7 @@ import os
 import time 
 import pandas as pd
 from vantage6.tools.util import info
-from lin_config_functions import init_model
+from v6_svm_py.lin_config_functions import init_model
 
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 sys.path.insert(1, os.path.join(sys.path[0], '../..'))

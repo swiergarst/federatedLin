@@ -1,4 +1,3 @@
-from numpy.lib.npyio import save
 from vantage6.tools.mock_client import ClientMockProtocol
 import sys
 import os
@@ -6,9 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 sys.path.insert(1, os.path.join(sys.path[0], '../..'))
-from comp_functions import average, scaffold
-from config_functions import get_datasets, get_full_dataset
-from helper_functions import  heatmap
+from fed_common.comp_functions import average, scaffold
+from fed_common.config_functions import get_datasets, get_full_dataset
+#from fed_common.helper_functions import  heatmap
 from sklearn.linear_model import SGDClassifier
 import time
 dataset = "MNIST_2class"
